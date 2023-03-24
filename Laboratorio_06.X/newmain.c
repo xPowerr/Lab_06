@@ -35,7 +35,14 @@ void __interrupt() isr(void) {
         TMR0 = 216;           // reestablecer el valor necesario para el TMR0
     }
     if (PIR1bits.ADIF) { // si se activa la bandera de interrupcion del ADC
-        PORTB = ADRESH; // asignar el PORTB como el potenciometro de PORTA0
+        if (ADCON0bits.CHS == 0b0000){ // si está en ADC AN0
+            PORTB = ADRESH; // asignar el PORTB como el potenciometro de PORTA0
+            ADCON0bits.CHS = 0b0100; // cambiar a ADC AN5
+        }
+        else if (ADCON0bits.CHS == 0b0100){ // si está en ADC AN5
+            PORTD = ADRESH; // asignar el PORTD como el potenciometro de PORTA5
+            ADCON0bits.CHS = 0b0000; // cambiar a ADC AN0
+        }
         PIR1bits.ADIF = 0; // limpiar la bandera de la interrupcion
     }
 }
@@ -49,6 +56,7 @@ void main(void) {
     setup ();
     setupADC ();
     while(1){
+        __delay_ms(10);
         if (ADCON0bits.GO == 0) { // si la lectura del ADC se desactiva
             ADCON0bits.GO = 1;
         }

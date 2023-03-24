@@ -2665,7 +2665,14 @@ void __attribute__((picinterrupt(("")))) isr(void) {
         TMR0 = 216;
     }
     if (PIR1bits.ADIF) {
-        PORTB = ADRESH;
+        if (ADCON0bits.CHS == 0b0000){
+            PORTB = ADRESH;
+            ADCON0bits.CHS = 0b0100;
+        }
+        else if (ADCON0bits.CHS == 0b0100){
+            PORTD = ADRESH;
+            ADCON0bits.CHS = 0b0000;
+        }
         PIR1bits.ADIF = 0;
     }
 }
@@ -2679,6 +2686,7 @@ void main(void) {
     setup ();
     setupADC ();
     while(1){
+        _delay((unsigned long)((10)*(8000000/4000.0)));
         if (ADCON0bits.GO == 0) {
             ADCON0bits.GO = 1;
         }
