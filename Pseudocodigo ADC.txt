@@ -1,0 +1,27 @@
+// --------------- PARA A CONFIGURAR ADC -----------------
+
+// --------------- Configura el puerto A --------------- 
+    TRISA = 0 // configurar PORTA como salida
+
+// --------------- Configura el canal --------------- 
+    ADCON0bits.CHS = 0b0000 // seleccionar AN0
+
+// --------------- Seleccion voltaje referencia --------------- 
+    ADCON1bits.VCFG1 = 0 // Voltaje de referencia de 0V
+    ADCON1bits.VCFG0 = 0 // Voltaje de referencia de 5V
+
+// --------------- Seleccion de reloj ---------------
+    ADCON0bits.ADCS = 0b10 // Fosc/32
+
+// habilitar interrupciones del ADC
+
+// --------------- Asignar 8 bits, justificado izquierda ---------------
+    ADCON1bits.ADFM = 0
+
+// --------------- Habilitar la conversion ADC ---------------
+    if (ADCON0bits.GO == 0) { // si la lectura del ADC se desactiva
+            ADCON0bits.GO = 1
+        }
+
+//--------------- Iniciar el ADC ---------------
+    ADCON0bits.ADON = 1; 

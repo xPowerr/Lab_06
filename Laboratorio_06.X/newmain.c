@@ -22,25 +22,36 @@
 #pragma config WRT = OFF        // Flash Program Memory Self Write Enable bits (Write protection off)
 
 #include <xc.h>
-#define _tmr0_value 200 // valor de tmr0 para la interupcion 
-#define _XTAL_FREQ 8000000 
-#define LEDS_1 PORTAbits.RA0 /// usar e0 como salida del led
+#include <stdint.h>
+#define _tmr0_value 200 // establecer valor inicial para el TMR0
+#define _XTAL_FREQ 8000000 // establecer oscilador intero a 8MHz
+#define LEDS_1 PORTAbits.RA0 /// usar RA0 como salida del led
 
 // --------------- Rutina de  interrupciones --------------- 
 void __interrupt() isr(void) {
-    if (INTCONbits.T0IF) { // Ssi se produce overflow en el TMR0 y se activa la bandera
+    if (INTCONbits.T0IF) { // si se produce overflow en el TMR0 y se activa la bandera
         LEDS_1 = ~LEDS_1; // alternar el estado del led entre encendido y apagado
         INTCONbits.T0IF = 0; // limpiar bandera de interrupcion del TMR0
         TMR0 = 216;           // reestablecer el valor necesario para el TMR0
     }
+    if (PIR1bits.ADIF) { // si se activa la bandera de interrupcion del ADC
+        PORTB = ADRESH; // asignar el PORTB como el potenciometro de PORTA0
+        PIR1bits.ADIF = 0; // limpiar la bandera de la interrupcion
+    }
 }
-// --------------- Prototipo del Setup --------------- 
+
+// --------------- Definiendo los Setups --------------- 
 void setup(void);
+void setupADC(void);
 
 // --------------- main --------------- 
 void main(void) {
     setup ();
+    setupADC ();
     while(1){
+        if (ADCON0bits.GO == 0) { // si la lectura del ADC se desactiva
+            ADCON0bits.GO = 1;
+        }
             
     }
     return;
@@ -49,15 +60,25 @@ void main(void) {
 // --------------- Setup General --------------- 
 void setup(void){
     // --------------- Definir como digitales --------------- 
-    ANSEL = 0;
+    ANSELbits.ANS0 = 1;
+    ANSELbits.ANS1 = 1;
     ANSELH = 0;
     
-    // --------------- Configura el puerto A --------------- 
-    TRISAbits.TRISA0 = 0; // Configura RA0 como salida para el LED
-    LEDS_1 = 0;    // Inicializa RE0 en estado bajo 
+    // --------------- Configura puertos --------------- 
+    //TRISA = 0; // Configura PORTA como salida
+    TRISB = 0; // Configura PORTB como salida
+    TRISD = 0; // Configura PORTD como salida
+    LEDS_1 = 0;    // Inicializa RA0 en estado bajo 
 
+    // --------------- limpiar puertos --------------- 
+    PORTA = 0;
+    PORTB = 0;
+    PORTC = 0;
+    PORTD = 0;
+    PORTE = 0;
+    
     // --------------- Oscilador --------------- 
-    OSCCONbits.IRCF = 0b111 ; // establecerlo en 8 mHz
+    OSCCONbits.IRCF = 0b111 ; // establecerlo en 8 MHz
     OSCCONbits.SCS = 1; // utilizar oscilador interno
     
 
@@ -73,6 +94,31 @@ void setup(void){
     INTCONbits.T0IF = 0; // establece la bandera de la interrupcion del TMR0 apagada
     INTCONbits.T0IE = 1; // habilitar iinterrupcion del TMR0
     INTCONbits.GIE = 1; // habilitar interrupciones globales
-   
+    INTCONbits.PEIE = 1; // habilitar interrupciones perifericas
+    PIE1bits.ADIE = 1; // habilitar interrupciones de ADC
+    PIR1bits.ADIF = 0; // limpiar la bandera de interrupcion del ADC
     
+}
+
+void setupADC(void){
+    // --------------- Configura el canal --------------- 
+    ADCON0bits.CHS = 0b0000; // seleccionar AN0
+    
+            
+    // --------------- Seleccion voltaje referencia --------------- 
+    ADCON1bits.VCFG1 = 0; // Voltaje de referencia de 0V
+    ADCON1bits.VCFG0 = 0; // Voltaje de referencia de 5V
+            
+    // --------------- Seleccion de reloj ---------------
+    ADCON0bits.ADCS = 0b10; // Fosc/32
+            
+    // --------------- Habilitar interrupciones del ADC ---------------
+    
+            
+    // --------------- Asignar 8 bits, justificado izquierda ---------------
+    ADCON1bits.ADFM = 0;        
+            
+    //--------------- Iniciar el ADC ---------------
+    ADCON0bits.ADON = 1;  
+    __delay_ms(1);
 }
