@@ -27,6 +27,57 @@
 #define _XTAL_FREQ 8000000 // establecer oscilador intero a 8MHz
 #define LEDS_1 PORTAbits.RA0 /// usar RA0 como salida del led
 
+unsigned char display [10] = {
+    // TABLA PARA CATODO COMUN
+    // BITS DP G F E D C B A
+    0b00111111, //0
+    0b00000110, //1
+    0b01011011, //2
+    0b01001111, //3
+    0b01100110, //4
+    0b01101101, //5
+    0b01111101, //6
+    0b00000111, //7
+    0b01111111, //8
+    0b01100111, //9
+    //RETLW 01110111B ;A
+    //RETLW 01111100B ;B
+    //RETLW 00111001B ;C
+    //RETLW 01011110B ;D
+    //RETLW 01111001B ;E
+    //RETLW 01110001B ;F 
+};
+
+unsigned char display_dot [10] = {
+    // TABLA PARA CATODO COMUN
+    // BITS DP G F E D C B A
+    0b10111111, //0.
+    0b10000110, //1.
+    0b11011011, //2.
+    0b11001111, //3.
+    0b11100110, //4.
+    0b11101101, //5.
+    0b11111101, //6.
+    0b10000111, //7.
+    0b11111111, //8.
+    0b11100111, //9.
+    //RETLW 01110111B ;A
+    //RETLW 01111100B ;B
+    //RETLW 00111001B ;C
+    //RETLW 01011110B ;D
+    //RETLW 01111001B ;E
+    //RETLW 01110001B ;F 
+};
+
+unsigned int volt=0;
+unsigned int volt_map=0;
+unsigned int uni=0;
+unsigned int dec=0;
+unsigned int cen=0;
+
+int map(int value, int inputmin, int inputmax, int outmin, int outmax){ //función para mappear valores
+    return ((value - inputmin)*(outmax-outmin)) / (inputmax-inputmin)+outmin;};
+
 // --------------- Rutina de  interrupciones --------------- 
 void __interrupt() isr(void) {
     if (INTCONbits.T0IF) { // si se produce overflow en el TMR0 y se activa la bandera
@@ -40,7 +91,8 @@ void __interrupt() isr(void) {
             ADCON0bits.CHS = 0b0100; // cambiar a ADC AN5
         }
         else if (ADCON0bits.CHS == 0b0100){ // si está en ADC AN5
-            PORTD = ADRESH; // asignar el PORTD como el potenciometro de PORTA5
+            volt = ADRESH; // asignar el display en la variable volt como el potenciometro de PORTA5
+            //PORTD = volt;
             ADCON0bits.CHS = 0b0000; // cambiar a ADC AN0
         }
         PIR1bits.ADIF = 0; // limpiar la bandera de la interrupcion
@@ -50,6 +102,7 @@ void __interrupt() isr(void) {
 // --------------- Definiendo los Setups --------------- 
 void setup(void);
 void setupADC(void);
+void displays(void);
 
 // --------------- main --------------- 
 void main(void) {
@@ -60,7 +113,7 @@ void main(void) {
         if (ADCON0bits.GO == 0) { // si la lectura del ADC se desactiva
             ADCON0bits.GO = 1;
         }
-            
+        displays ();
     }
     return;
 }
@@ -69,13 +122,15 @@ void main(void) {
 void setup(void){
     // --------------- Definir como digitales --------------- 
     ANSELbits.ANS0 = 1;
-    ANSELbits.ANS1 = 1;
+    ANSELbits.ANS4 = 1;
     ANSELH = 0;
     
     // --------------- Configura puertos --------------- 
     //TRISA = 0; // Configura PORTA como salida
     TRISB = 0; // Configura PORTB como salida
+    TRISC = 0; // Configura PORTC como salida
     TRISD = 0; // Configura PORTD como salida
+    TRISE = 0; // Configura PORTE como salida
     LEDS_1 = 0;    // Inicializa RA0 en estado bajo 
 
     // --------------- limpiar puertos --------------- 
@@ -108,6 +163,7 @@ void setup(void){
     
 }
 
+// --------------- Setup del ADC --------------- 
 void setupADC(void){
     // --------------- Configura el canal --------------- 
     ADCON0bits.CHS = 0b0000; // seleccionar AN0
@@ -129,4 +185,30 @@ void setupADC(void){
     //--------------- Iniciar el ADC ---------------
     ADCON0bits.ADON = 1;  
     __delay_ms(1);
+}
+
+// --------------- Setup del MUX Displays --------------- 
+void displays(void){
+    volt_map = map(volt, 0, 255, 0, 100); // mappear el valor del voltaje de 0 a 500 y no 255
+    uni = (volt_map*5)/100; // enviar las unidades del voltaje a la variable unidades
+    dec = ((volt_map*5)/10)%10; // enviar las decimas del valor del voltaje a la variable decimas
+    cen = ((volt_map*5))%10; // enviar las centesimas del voltaje a la variable centesimas
+    
+    PORTC = display_dot[uni]; // enviar el valor de las unidades al PORTC
+    PORTDbits.RD0 = 0; // MUX COMO EN ASSEMBLER
+    PORTDbits.RD1 = 0;
+    PORTDbits.RD2 = 1;
+    __delay_ms(5);     // DELAY DE 5ms
+    
+    PORTC = display[dec]; // enviar el valor de las decimas al PORTC
+    PORTDbits.RD0 = 0; // MUX COMO EN ASSEMBLER
+    PORTDbits.RD1 = 1;
+    PORTDbits.RD2 = 0;
+    __delay_ms(5);     // DELAY DE 5ms
+    
+    PORTC = display[cen]; // enviar el valor de las centesimas al PORTC
+    PORTDbits.RD0 = 1; // MUX COMO EN ASSEMBLER
+    PORTDbits.RD1 = 0;
+    PORTDbits.RD2 = 0;
+    __delay_ms(5);     // DELAY DE 5ms
 }

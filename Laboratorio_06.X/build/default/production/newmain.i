@@ -2657,6 +2657,57 @@ extern __bank0 __bit __timeout;
 
 
 
+unsigned char display [10] = {
+
+
+    0b00111111,
+    0b00000110,
+    0b01011011,
+    0b01001111,
+    0b01100110,
+    0b01101101,
+    0b01111101,
+    0b00000111,
+    0b01111111,
+    0b01100111,
+
+
+
+
+
+
+};
+
+unsigned char display_dot [10] = {
+
+
+    0b10111111,
+    0b10000110,
+    0b11011011,
+    0b11001111,
+    0b11100110,
+    0b11101101,
+    0b11111101,
+    0b10000111,
+    0b11111111,
+    0b11100111,
+
+
+
+
+
+
+};
+
+unsigned int volt=0;
+unsigned int volt_map=0;
+unsigned int uni=0;
+unsigned int dec=0;
+unsigned int cen=0;
+
+int map(int value, int inputmin, int inputmax, int outmin, int outmax){
+    return ((value - inputmin)*(outmax-outmin)) / (inputmax-inputmin)+outmin;};
+
 
 void __attribute__((picinterrupt(("")))) isr(void) {
     if (INTCONbits.T0IF) {
@@ -2670,7 +2721,8 @@ void __attribute__((picinterrupt(("")))) isr(void) {
             ADCON0bits.CHS = 0b0100;
         }
         else if (ADCON0bits.CHS == 0b0100){
-            PORTD = ADRESH;
+            volt = ADRESH;
+
             ADCON0bits.CHS = 0b0000;
         }
         PIR1bits.ADIF = 0;
@@ -2680,6 +2732,7 @@ void __attribute__((picinterrupt(("")))) isr(void) {
 
 void setup(void);
 void setupADC(void);
+void displays(void);
 
 
 void main(void) {
@@ -2690,7 +2743,7 @@ void main(void) {
         if (ADCON0bits.GO == 0) {
             ADCON0bits.GO = 1;
         }
-
+        displays ();
     }
     return;
 }
@@ -2699,13 +2752,15 @@ void main(void) {
 void setup(void){
 
     ANSELbits.ANS0 = 1;
-    ANSELbits.ANS1 = 1;
+    ANSELbits.ANS4 = 1;
     ANSELH = 0;
 
 
 
     TRISB = 0;
+    TRISC = 0;
     TRISD = 0;
+    TRISE = 0;
     PORTAbits.RA0 = 0;
 
 
@@ -2738,6 +2793,7 @@ void setup(void){
 
 }
 
+
 void setupADC(void){
 
     ADCON0bits.CHS = 0b0000;
@@ -2759,4 +2815,30 @@ void setupADC(void){
 
     ADCON0bits.ADON = 1;
     _delay((unsigned long)((1)*(8000000/4000.0)));
+}
+
+
+void displays(void){
+    volt_map = map(volt, 0, 255, 0, 100);
+    uni = (volt_map*5)/100;
+    dec = ((volt_map*5)/10)%10;
+    cen = ((volt_map*5))%10;
+
+    PORTC = display_dot[uni];
+    PORTDbits.RD0 = 0;
+    PORTDbits.RD1 = 0;
+    PORTDbits.RD2 = 1;
+    _delay((unsigned long)((5)*(8000000/4000.0)));
+
+    PORTC = display[dec];
+    PORTDbits.RD0 = 0;
+    PORTDbits.RD1 = 1;
+    PORTDbits.RD2 = 0;
+    _delay((unsigned long)((5)*(8000000/4000.0)));
+
+    PORTC = display[cen];
+    PORTDbits.RD0 = 1;
+    PORTDbits.RD1 = 0;
+    PORTDbits.RD2 = 0;
+    _delay((unsigned long)((5)*(8000000/4000.0)));
 }
